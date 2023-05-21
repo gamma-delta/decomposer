@@ -5,7 +5,10 @@ use creek::{ReadDiskStream, SeekMode, SymphoniaDecoder};
 use log::error;
 use rtrb::{Consumer, Producer};
 
-use crate::model::{MsgThreadToUi, MsgUiToThread, PlayingState};
+use crate::{
+  model::{MsgThreadToUi, MsgUiToThread, PlayingState},
+  settings::DecomposerConfig,
+};
 
 pub const OUTPUT_CHANNEL_COUNT: usize = 2;
 
@@ -18,6 +21,8 @@ pub struct DecomposerAudioDaemont {
 
   tx_to_ui: Producer<MsgThreadToUi>,
   rx_from_ui: Consumer<MsgUiToThread>,
+
+  volume: f32,
 }
 
 /// It's like a daemon, but it's not
@@ -25,6 +30,7 @@ impl DecomposerAudioDaemont {
   pub fn new(
     tx_to_ui: Producer<MsgThreadToUi>,
     rx_from_ui: Consumer<MsgUiToThread>,
+    config: &DecomposerConfig,
   ) -> Self {
     Self {
       tx_to_ui,
@@ -32,6 +38,8 @@ impl DecomposerAudioDaemont {
 
       playback_state: ThreadPlayingState::Stopped,
       looping: false,
+
+      volume: config.copy_volume(),
     }
   }
 
@@ -83,8 +91,12 @@ impl DecomposerAudioDaemont {
           let _ignore = track.seek(pos, creek::SeekMode::Auto);
         }
       }
+
       MsgUiToThread::SetLooping(looping) => {
         self.looping = looping;
+      }
+      MsgUiToThread::SetVolume(volume) => {
+        self.volume = volume;
       }
     }
   }
@@ -103,6 +115,7 @@ impl DecomposerAudioDaemont {
     {
       (track, playing)
     } else {
+      make_silent(data);
       return Ok(());
     };
 
@@ -110,6 +123,7 @@ impl DecomposerAudioDaemont {
     // are ok
     if !stream.is_ready()? {
       let _ignore = self.tx_to_ui.push(MsgThreadToUi::Buffering);
+      return Ok(());
     }
 
     if playing {
@@ -139,8 +153,8 @@ impl DecomposerAudioDaemont {
           let ch = read_data.read_channel(0);
 
           for i in 0..write_count {
-            data[i * OUTPUT_CHANNEL_COUNT] = ch[i];
-            data[(i * OUTPUT_CHANNEL_COUNT) + 1] = ch[i];
+            data[i * OUTPUT_CHANNEL_COUNT] = ch[i] * self.volume;
+            data[(i * OUTPUT_CHANNEL_COUNT) + 1] = ch[i] * self.volume;
           }
         } else {
           let ch1 = read_data.read_channel(0);
@@ -153,8 +167,8 @@ impl DecomposerAudioDaemont {
           }
 
           for i in 0..write_count {
-            data[i * OUTPUT_CHANNEL_COUNT] = ch1[i];
-            data[(i * OUTPUT_CHANNEL_COUNT) + 1] = ch2[i];
+            data[i * OUTPUT_CHANNEL_COUNT] = ch1[i] * self.volume;
+            data[(i * OUTPUT_CHANNEL_COUNT) + 1] = ch2[i] * self.volume;
           }
         }
 
@@ -164,7 +178,13 @@ impl DecomposerAudioDaemont {
 
         data = &mut data[actually_read_count * OUTPUT_CHANNEL_COUNT..];
       }
+    } else {
+      make_silent(data);
     }
+
+    let _ignore = self
+      .tx_to_ui
+      .push(MsgThreadToUi::PlayheadPos(stream.playhead()));
 
     Ok(())
   }

@@ -1,8 +1,15 @@
-use crate::{app::DecomposerApp, emoji, model::PlayingState};
+use crate::{
+  app::DecomposerApp,
+  emoji,
+  model::{MsgUiToThread, PlayingState},
+};
 
-use eframe::egui::{
-  self, Button, CentralPanel, ImageButton, Label, ProgressBar, RichText,
-  ScrollArea, TextStyle, TopBottomPanel, WidgetText,
+use eframe::{
+  egui::{
+    self, Button, CentralPanel, ImageButton, Label, Layout, ProgressBar,
+    RichText, ScrollArea, Slider, TextStyle, TopBottomPanel, WidgetText,
+  },
+  emath::Align,
 };
 
 impl DecomposerApp {
@@ -58,26 +65,70 @@ impl DecomposerApp {
             ref mut playing, ..
           } => {
             *playing = !*playing;
+            let msg = if *playing {
+              MsgUiToThread::Resume
+            } else {
+              MsgUiToThread::Pause
+            };
+            let _ignore = self.tx_to_thread.push(msg);
           }
         }
       }
 
       ui.add_enabled(wind_enabled, Button::new(emoji::WIND_RIGHT));
 
-      // TODO: figure out how to get the length of a sound file
-      // I think it's in params.
-      // https://docs.rs/symphonia-core/0.5.2/symphonia_core/units/struct.TimeBase.html
-      // Not sure what to multiply there
-      let pb = match self.now_playing {
-        PlayingState::Selected { ref track, .. } => {
-          let progress =
-            track.playhead as f32 / track.file_info.num_frames as f32;
-          ProgressBar::new(progress)
-            .text(format!("{}/{}", track.playhead, track.file_info.num_frames))
+      // We want the progress bar to just take whatever's remaining in the center
+      // so lay out right to left.
+      ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        let old_volume = *self.config.volume();
+
+        ui.add(
+          Slider::new(self.config.volume(), 0.0..=2.0)
+            .custom_formatter(|f, _| format!("{:.0}%", f * 100.0)),
+        );
+        if old_volume != *self.config.volume() {
+          let _ignore = self
+            .tx_to_thread
+            .push(MsgUiToThread::SetVolume(*self.config.volume()));
         }
-        _ => ProgressBar::new(0.0),
-      };
-      ui.add(pb);
+
+        ui.separator();
+
+        let (pb, hover) = match self.now_playing {
+          PlayingState::Selected { ref track, .. } => {
+            let progress =
+              track.playhead as f32 / track.file_info.num_frames as f32;
+
+            let text = if let Some(timesize) = track.file_info.params.time_base
+            {
+              let here = timesize.calc_time(track.playhead as u64);
+              let end = timesize.calc_time(track.file_info.num_frames as u64);
+
+              format!(
+                "{}:{:02}/{}:{:02}",
+                here.seconds / 60,
+                here.seconds % 60,
+                end.seconds / 60,
+                end.seconds % 60
+              )
+            } else {
+              format!("xx:xx/xx:xx")
+            };
+
+            let hover = format!(
+              "{}/{} frames",
+              track.playhead, track.file_info.num_frames
+            );
+
+            (ProgressBar::new(progress).text(text), Some(hover))
+          }
+          _ => (ProgressBar::new(0.0), None),
+        };
+        let res = ui.add(pb);
+        if let Some(hover) = hover {
+          res.on_hover_text(&hover);
+        }
+      });
     });
 
     ui.horizontal_centered(|ui| {

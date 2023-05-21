@@ -105,6 +105,10 @@ impl DecomposerConfig {
   pub fn library_root(&self) -> &Path {
     &self.inner.library_root
   }
+
+  pub fn copy_volume(&self) -> f32 {
+    self.inner.volume
+  }
 }
 
 /// Try to return the default

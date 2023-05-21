@@ -41,6 +41,7 @@ pub enum MsgUiToThread {
   SeekTo(usize),
 
   SetLooping(bool),
+  SetVolume(f32),
 }
 
 #[derive(Debug)]

@@ -69,7 +69,7 @@ impl DecomposerApp {
     };
 
     let mut looks_like_youre_going_to_the_shadow_thread_jimbo =
-      DecomposerAudioDaemont::new(tx_to_ui, rx_from_ui);
+      DecomposerAudioDaemont::new(tx_to_ui, rx_from_ui, &config);
 
     let stream = device
       .build_output_stream(
