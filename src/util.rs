@@ -3,16 +3,36 @@ use std::{
   path::{Path, PathBuf},
 };
 
+use log::warn;
+
 pub fn get_all_children<P: AsRef<Path>>(path: P) -> IterAllChildren {
-  IterAllChildren {
-    to_explore: vec![path.as_ref().to_owned()],
-    to_yield: Vec::new(),
+  match path.as_ref().canonicalize() {
+    Ok(path) => IterAllChildren {
+      root: path.to_path_buf(),
+      to_explore: vec![path.to_path_buf()],
+      to_yield: Vec::new(),
+    },
+    Err(ono) => {
+      warn!(
+        "Could not canonicalize {:?} for get_all_children: {}",
+        path.as_ref(),
+        ono
+      );
+      IterAllChildren {
+        root: "nope".into(),
+        to_explore: Vec::new(),
+        to_yield: Vec::new(),
+      }
+    }
   }
 }
 
 pub struct IterAllChildren {
+  /// Mostly for printing information
+  root: PathBuf,
   /// directories to explore
   to_explore: Vec<PathBuf>,
+  /// Children to yield
   to_yield: Vec<PathBuf>,
 }
 
@@ -20,12 +40,32 @@ impl Iterator for IterAllChildren {
   type Item = PathBuf;
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.to_yield.is_empty() {
+    while self.to_yield.is_empty() {
+      // If popping the explore is empty, exit
       let explore = self.to_explore.pop()?;
-      let read_dir = fs::read_dir(&explore).ok()?;
+      let read_dir = match fs::read_dir(&explore) {
+        Ok(it) => it,
+        Err(err) => {
+          warn!(
+            "searching file children of {:?} -> {:?}: {}",
+            &self.root, &explore, err
+          );
+          continue;
+        }
+      };
       for entry in read_dir {
-        let Ok(entry) = entry else { continue };
+        let entry = match entry {
+          Ok(entry) => entry,
+          Err(err) => {
+            warn!(
+              "searching entry child of {:?} -> {:?}: {}",
+              &self.root, &explore, err
+            );
+            continue;
+          }
+        };
         let Ok(ty) = entry.file_type() else { continue };
+
         let full_path = explore.join(entry.path());
         if ty.is_dir() {
           self.to_explore.push(full_path);

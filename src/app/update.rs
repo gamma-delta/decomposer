@@ -1,16 +1,20 @@
 use creek::{
   Decoder, ReadDiskStream, ReadStreamOptions, SeekMode, SymphoniaDecoder,
 };
-use log::error;
+use log::{error, info, warn};
 
-use crate::model::{MsgThreadToUi, MsgUiToThread};
+use crate::model::{CurrentlyPlayingTrack, MsgThreadToUi, MsgUiToThread};
 
-use super::DecomposerApp;
+use super::{AppPlayingState, DecomposerApp, BUFFERING_COOLDOWN};
 
 impl DecomposerApp {
   pub fn update(&mut self) {
     while let Ok(msg) = self.rx_from_thread.pop() {
       self.take_message(msg);
+    }
+
+    if self.buffering_cooldown > 0 {
+      self.buffering_cooldown -= 1;
     }
   }
 
@@ -19,12 +23,25 @@ impl DecomposerApp {
       MsgThreadToUi::FinishedTrack => {
         self.deque_and_send_track();
       }
-      MsgThreadToUi::PlayheadPos(_) => todo!(),
-      MsgThreadToUi::Stop => todo!(),
+      MsgThreadToUi::PlayheadPos(pos) => {
+        if let AppPlayingState::Selected { ref mut track, .. } =
+          self.now_playing
+        {
+          track.playhead = pos;
+        } else {
+          warn!("audio thread sent playhead pos update (to {}) when we weren't playing", pos);
+        }
+      }
+      MsgThreadToUi::Stop => {
+        self.now_playing = AppPlayingState::Stopped;
+      }
+      MsgThreadToUi::Buffering => {
+        self.buffering_cooldown = BUFFERING_COOLDOWN;
+      }
     }
   }
 
-  fn deque_and_send_track(&mut self) {
+  pub fn deque_and_send_track(&mut self) {
     while let Some(track) = self.queue.pop_front() {
       // I don't have that functionality so i will just have 1 cache
       let opts = ReadStreamOptions {
@@ -52,6 +69,17 @@ impl DecomposerApp {
         continue;
       }
 
+      info!("Sending {:?} to audio thread", &track);
+
+      let info = stream.info().clone();
+      self.now_playing = AppPlayingState::Selected {
+        playing: true,
+        track: CurrentlyPlayingTrack {
+          track,
+          playhead: 0,
+          file_info: info,
+        },
+      };
       let _ignore =
         self.tx_to_thread.push(MsgUiToThread::StartNewTrack(stream));
 

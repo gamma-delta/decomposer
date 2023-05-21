@@ -18,9 +18,6 @@ pub struct DecomposerAudioDaemont {
 
   tx_to_ui: Producer<MsgThreadToUi>,
   rx_from_ui: Consumer<MsgUiToThread>,
-
-  /// I don't know what this does IDK ask Creek
-  had_cache_miss_last_cycle: bool,
 }
 
 /// It's like a daemon, but it's not
@@ -34,7 +31,6 @@ impl DecomposerAudioDaemont {
       rx_from_ui,
 
       playback_state: ThreadPlayingState::Stopped,
-      had_cache_miss_last_cycle: false,
       looping: false,
     }
   }
@@ -113,7 +109,7 @@ impl DecomposerAudioDaemont {
     // The original app injects silence; instead I will pause until things
     // are ok
     if !stream.is_ready()? {
-      return Ok(());
+      let _ignore = self.tx_to_ui.push(MsgThreadToUi::Buffering);
     }
 
     if playing {
