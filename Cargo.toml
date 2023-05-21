@@ -1,12 +1,15 @@
 [package]
-name = "creak"
+name = "decomposer"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eframe = "0.21.3"
-egui = "0.21.0"
+creek = { version = "0.2.3", features = ["decode-all"] }
+directories-next = "2.0.0"
+eframe = { version = "0.21.3", features = ["persistence"] }
 env_logger = "0.10.0"
-rodio = "0.17.1"
+eyre = "0.6.8"
+knuffel = "3.2.0"
+log = "0.4.17"
