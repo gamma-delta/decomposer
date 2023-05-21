@@ -1,8 +1,11 @@
 // hide console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// Thanks to this for the help:
+// https://github.com/MeadowlarkDAW/creek/tree/main/demos/player
+
 mod app;
-mod draw;
+mod audio;
 mod model;
 mod settings;
 mod util;

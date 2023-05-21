@@ -1,9 +1,13 @@
 use std::{
-  fs::{self, DirEntry},
-  path::PathBuf,
+  fs,
+  path::{Path, PathBuf},
 };
 
-pub fn get_all_children<P: AsRef<Path>>(path: P) -> impl Iterator<Item = Path> {
+pub fn get_all_children<P: AsRef<Path>>(path: P) -> IterAllChildren {
+  IterAllChildren {
+    to_explore: vec![path.as_ref().to_owned()],
+    to_yield: Vec::new(),
+  }
 }
 
 pub struct IterAllChildren {
