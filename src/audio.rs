@@ -2,7 +2,7 @@
 
 use cpal::OutputCallbackInfo;
 use creek::{ReadDiskStream, SeekMode, SymphoniaDecoder};
-use log::error;
+use log::{debug, error, info};
 use rtrb::{Consumer, Producer};
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
 pub const OUTPUT_CHANNEL_COUNT: usize = 2;
 
 type ThreadPlayingState = PlayingState<ReadDiskStream<SymphoniaDecoder>>;
+type CreekError = creek::read::ReadError<symphonia::core::errors::Error>;
 
 /// The struct that goes and lives on the audio thread.
 pub struct DecomposerAudioDaemont {
@@ -50,13 +51,23 @@ impl DecomposerAudioDaemont {
 
     let res = self.finagle_audio_state(data, _callback);
     if let Err(err) = res {
-      // oh no
-      error!("{}", err);
+      if let creek::read::ReadError::EndOfFile = err {
+        // Welp we're done here onto the next pls
+        info!(
+          "Finished with this song, requesting ui thread send us the next one"
+        );
+        let _ignore = self.tx_to_ui.push(MsgThreadToUi::FinishedTrack);
+      } else {
+        // oh no
+        error!("{}", err);
+      }
       self.playback_state = ThreadPlayingState::Stopped;
     }
   }
 
   fn take_msg(&mut self, msg: MsgUiToThread) {
+    debug!("Recv message on audio thread: {:?}", &msg);
+
     match msg {
       MsgUiToThread::StartNewTrack(stream) => {
         self.playback_state = ThreadPlayingState::Selected {
@@ -105,7 +116,7 @@ impl DecomposerAudioDaemont {
     &mut self,
     mut data: &mut [f32],
     _callback: &OutputCallbackInfo,
-  ) -> eyre::Result<()> {
+  ) -> Result<(), CreekError> {
     // I would be doing this with the slick new let-else but the formatter
     // does not like it
     let (stream, playing) = if let ThreadPlayingState::Selected {
@@ -123,8 +134,12 @@ impl DecomposerAudioDaemont {
     // are ok
     if !stream.is_ready()? {
       let _ignore = self.tx_to_ui.push(MsgThreadToUi::Buffering);
+      // but prevent stuttering
+      make_silent(data);
       return Ok(());
     }
+
+    let prev_playhead = stream.playhead();
 
     if playing {
       let frame_count = stream.info().num_frames;
@@ -182,9 +197,11 @@ impl DecomposerAudioDaemont {
       make_silent(data);
     }
 
-    let _ignore = self
-      .tx_to_ui
-      .push(MsgThreadToUi::PlayheadPos(stream.playhead()));
+    if stream.playhead() != prev_playhead {
+      let _ignore = self
+        .tx_to_ui
+        .push(MsgThreadToUi::PlayheadPos(stream.playhead()));
+    }
 
     Ok(())
   }

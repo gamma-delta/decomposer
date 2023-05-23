@@ -25,6 +25,7 @@ pub struct CurrentlyPlayingTrack {
 
 // The audio player needs to live on another thread so communicate via messages
 
+#[derive(derive_debug::Dbg)]
 pub enum MsgThreadToUi {
   FinishedTrack,
   PlayheadPos(usize),
@@ -32,8 +33,9 @@ pub enum MsgThreadToUi {
   Buffering,
 }
 
+#[derive(derive_debug::Dbg)]
 pub enum MsgUiToThread {
-  StartNewTrack(ReadDiskStream<SymphoniaDecoder>),
+  StartNewTrack(#[dbg(placeholder = "...")] ReadDiskStream<SymphoniaDecoder>),
 
   Resume,
   Pause,

@@ -16,7 +16,7 @@ use app::DecomposerApp;
 use eyre::eyre;
 
 fn main() -> eyre::Result<()> {
-  let env = env_logger::Env::default().default_filter_or("decomposer");
+  let env = env_logger::Env::default().default_filter_or("decomposer=info");
   env_logger::init_from_env(env);
 
   let options = eframe::NativeOptions {

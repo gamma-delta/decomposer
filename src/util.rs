@@ -4,6 +4,7 @@ use std::{
 };
 
 use log::warn;
+use symphonia::core::units::{Time, TimeStamp};
 
 pub fn get_all_children<P: AsRef<Path>>(path: P) -> IterAllChildren {
   match path.as_ref().canonicalize() {
@@ -76,5 +77,18 @@ impl Iterator for IterAllChildren {
     }
 
     self.to_yield.pop()
+  }
+}
+
+pub fn format_symphonia_time(time: Time) -> String {
+  if time.seconds >= 60 * 60 {
+    format!(
+      "{}:{:02}:{:02}",
+      time.seconds / 3600,
+      time.seconds / 60,
+      time.seconds % 60
+    )
+  } else {
+    format!("{}:{:02}", time.seconds / 60, time.seconds % 60)
   }
 }

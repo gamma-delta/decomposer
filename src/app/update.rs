@@ -1,7 +1,7 @@
 use creek::{
   Decoder, ReadDiskStream, ReadStreamOptions, SeekMode, SymphoniaDecoder,
 };
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 use crate::model::{CurrentlyPlayingTrack, MsgThreadToUi, MsgUiToThread};
 
@@ -19,6 +19,7 @@ impl DecomposerApp {
   }
 
   fn take_message(&mut self, msg: MsgThreadToUi) {
+    debug!("Recv message on ui thread: {:?}", &msg);
     match msg {
       MsgThreadToUi::FinishedTrack => {
         self.deque_and_send_track();
