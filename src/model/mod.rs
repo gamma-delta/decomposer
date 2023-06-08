@@ -1,6 +1,8 @@
-use std::path::PathBuf;
+mod track;
 
-use creek::{FileInfo, ReadDiskStream, SymphoniaDecoder};
+pub use track::*;
+
+use creek::{FileInfo, ReadDiskStream, SymphoniaDecoder, SymphoniaDecoderInfo};
 use symphonia::core::codecs::CodecParameters;
 
 /// Generator for tracks.
@@ -10,17 +12,12 @@ pub struct Playlist {
   tracks: Vec<Track>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Track {
-  pub path: PathBuf,
-}
-
 #[derive(derive_debug::Dbg)]
 pub struct CurrentlyPlayingTrack {
   pub track: Track,
   pub playhead: usize,
   #[dbg(placeholder = "...")]
-  pub file_info: FileInfo<CodecParameters>,
+  pub file_info: FileInfo<SymphoniaDecoderInfo>,
 }
 
 // The audio player needs to live on another thread so communicate via messages

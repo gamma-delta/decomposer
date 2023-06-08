@@ -19,7 +19,7 @@ use crate::{
 
 pub type AppPlayingState = PlayingState<CurrentlyPlayingTrack>;
 
-const BUFFERING_COOLDOWN: u32 = 30;
+const BUFFERING_COOLDOWN: u32 = 10;
 
 pub struct DecomposerApp {
   tx_to_thread: Producer<MsgUiToThread>,

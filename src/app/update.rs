@@ -2,6 +2,7 @@ use creek::{
   Decoder, ReadDiskStream, ReadStreamOptions, SeekMode, SymphoniaDecoder,
 };
 use log::{debug, error, info, warn};
+use symphonia::core::{formats::FormatReader, meta::MetadataReader};
 
 use crate::model::{CurrentlyPlayingTrack, MsgThreadToUi, MsgUiToThread};
 
@@ -70,9 +71,13 @@ impl DecomposerApp {
         continue;
       }
 
-      info!("Sending {:?} to audio thread", &track);
-
       let info = stream.info().clone();
+      info!(
+        "Sending {:?} to audio thread:\n{:?}",
+        track.path.display(),
+        &info.params.metadata
+      );
+
       self.now_playing = AppPlayingState::Selected {
         playing: true,
         track: CurrentlyPlayingTrack {

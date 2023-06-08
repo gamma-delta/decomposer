@@ -110,10 +110,12 @@ impl DecomposerApp {
         ui.separator();
 
         if let PlayingState::Selected { ref track, .. } = self.now_playing {
+          let time_base = track.file_info.params.codec_params.time_base;
+
           let progress =
             track.playhead as f32 / track.file_info.num_frames as f32;
 
-          let text = if let Some(timesize) = track.file_info.params.time_base {
+          let text = if let Some(timesize) = time_base {
             let here = timesize.calc_time(track.playhead as u64);
             let end = timesize.calc_time(track.file_info.num_frames as u64);
 
@@ -128,11 +130,9 @@ impl DecomposerApp {
 
           let res = ui.add(TrackProgressBar::new(progress, text));
           // we have chained if-let at home
-          if let (Some(mousepos), Some(timesize), true) = (
-            ui.ctx().pointer_latest_pos(),
-            track.file_info.params.time_base,
-            res.hovered(),
-          ) {
+          if let (Some(mousepos), Some(timesize), true) =
+            (ui.ctx().pointer_latest_pos(), time_base, res.hovered())
+          {
             let bar_span = res.rect;
             let x_prop = (mousepos.x - bar_span.left()) / bar_span.width();
 

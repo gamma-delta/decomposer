@@ -714,8 +714,6 @@ dependencies = [
 [[package]]
 name = "creek"
 version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5144c0d2ade935e744126361ede4007ca3d7d36d06bc3d227b49393c511094b3"
 dependencies = [
  "creek-core",
  "creek-decode-symphonia",
@@ -725,8 +723,6 @@ dependencies = [
 [[package]]
 name = "creek-core"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee99446d0b490e7b6bd094772ec2067cfa0a94bb2a2ed97b141cacf7a533551"
 dependencies = [
  "rtrb",
 ]
@@ -734,8 +730,6 @@ dependencies = [
 [[package]]
 name = "creek-decode-symphonia"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f924e3a21a66fe9e2d6628a33081b5d1934e8d5c8165541d731fb410479e177"
 dependencies = [
  "creek-core",
  "symphonia",
@@ -744,8 +738,6 @@ dependencies = [
 [[package]]
 name = "creek-encode-wav"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d86aa83b7e6ff8d7bcf452a7ea821ad3dc01b6fd932817f0d469da820037a4b"
 dependencies = [
  "byte-slice-cast",
  "creek-core",
